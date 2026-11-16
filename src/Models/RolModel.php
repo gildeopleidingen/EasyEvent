@@ -7,7 +7,7 @@ use PDO;
 
 class RolModel extends DBModel
 {
-    public int $id;
+    public ?int $id = null;
     public string $name;
 
     public function __construct()
@@ -29,7 +29,7 @@ class RolModel extends DBModel
         return $this->id;
     }
 
-    public function setId($value)
+    public function setId(?int $value)
     {
         $this->id = $value;
     }
@@ -38,11 +38,10 @@ class RolModel extends DBModel
         $mysql = Conn::getInstance();
         $db = $mysql->getPDO();
 
-        $sql = "SELECT 1 
-                FROM gebruiker_rol gr
-                JOIN rol r ON r.id = gr.rol_id
-                WHERE gr.gebruiker_id = :userid
-                AND r.rol IN ('Admin', 'Organisator')
+        $sql = "SELECT 1
+                FROM gebruiker
+                WHERE id = :userid
+                AND rol IN ('Admin', 'Organisator')
                 LIMIT 1
                 ";
 
@@ -104,7 +103,10 @@ class RolModel extends DBModel
         $mysql = Conn::getInstance();
         $db = $mysql->getPDO();
 
-        $sql = "SELECT `rol_id`, `rol` FROM `gebruiker_rol` LEFT JOIN `rol` ON gebruiker_rol.rol_id = `rol`.id WHERE `gebruiker_id` = :gebruikerID";
+        $sql = "SELECT g.rol, r.id
+                FROM gebruiker g
+                LEFT JOIN rol r ON r.rol = g.rol
+                WHERE g.id = :gebruikerID";
 
         $stmt = $db->prepare($sql);
 
@@ -113,9 +115,15 @@ class RolModel extends DBModel
         }
 
         $roles = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if ($row['rol'] === null || $row['rol'] === '') {
+                return $roles;
+            }
+
             $role = new RolModel();
-            $role->setid($row['rol_id']);
+            if ($row['id'] !== null) {
+                $role->setId((int) $row['id']);
+            }
             $role->setName($row['rol']);
             $roles[] = $role;
         }
