@@ -27,9 +27,9 @@ use App\Models\InschrijfModel;
 </head>
 
 <body>
-<div class="container py-4">
-    <?php require_once("./parts/nav.php"); ?>
+<?php require_once("./parts/nav.php"); ?>
 
+<div class="container py-4">
     <div class="row g-4">
         
         <!-- Category Buttons -->
