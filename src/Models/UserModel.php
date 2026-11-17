@@ -198,12 +198,8 @@ class UserModel
         $mysql = Conn::getInstance();
         $db = $mysql->getPDO();
 
-        $sql = "SELECT g.id, g.voornaam, g.achternaam, g.email, g.telefoon, IF(g.geverifieerd = 1, 'Ja', 'Nee') AS Is_Geverifieerd, k.maat, g.ouder_id, GROUP_CONCAT(r.rol SEPARATOR ', ') as Rollen
-                FROM gebruiker_rol gr 
-                JOIN gebruiker g on g.id = gr.gebruiker_id
-                JOIN rol r on r.id = gr.rol_id
-                LEFT JOIN kleding_maat k on k.id = g.kleding_maat_id
-                GROUP by g.id
+        $sql = "SELECT g.id, g.voornaam, g.achternaam, g.email, g.telefoon, IF(g.geverifieerd = 1, 'Ja', 'Nee') AS Is_Geverifieerd, g.Kledingmaat AS maat, g.rol AS Rollen
+                FROM gebruiker g
                 ORDER BY g.achternaam, g.voornaam";
         $stmt = $db->prepare($sql);
 
@@ -221,7 +217,6 @@ class UserModel
             $user->setTelefoon($row['telefoon']);
             $user->setIsGeverifieerd($row['Is_Geverifieerd']);
             $user->setKledingmaat($row['maat']);
-            $user->setOuderId($row['ouder_id']);
             $user->setRoles($row['Rollen']);
 
             $allusers[] = $user;
@@ -246,11 +241,11 @@ class UserModel
         $km = $um->getKledingmaat();
 
         //rol
-        $rollen = $um->getRoles();
+        $rol = $um->getRoles();
 
         $sql = "INSERT INTO `gebruiker`(`voornaam`, `achternaam`, `email`, `telefoon`, `postcode`, `plaatsnaam`, 
-            `wachtwoord`, `huisnummer`, `kleding_maat_id`)
-            VALUES (:vn, :an, :em, :tel, :pc, :pln, :ww, :hnr, :km)";
+            `wachtwoord`, `huisnummer`, `kleding_maat_id`, `rol`)
+            VALUES (:vn, :an, :em, :tel, :pc, :pln, :ww, :hnr, :km, :rol)";
 
         $stmt = $db->prepare($sql);
         $stmt->bindParam(":vn",$vn);
@@ -263,39 +258,23 @@ class UserModel
         $stmt->bindParam(":hnr", $hnr);
         //  $stmt->bindParam(":isgev", $isgev);
         $stmt->bindParam(":km", $km);
-        
-        if($stmt->execute())
-        {
-            $last_id = $db->lastInsertId();
-        
-            foreach($rollen as $rol){
-                //Koppel de gebruiker rol aan deze nieuwe gebruiker.
-                $stmt = $db->prepare("INSERT INTO `gebruiker_rol`(`gebruiker_id`, `rol_id`) VALUES (:gebruikerId, :rolId)");
-                $stmt->bindParam('gebruikerId', $last_id);
-                $stmt->bindParam('rolId', $rol);
-                $stmt->execute();
-            }
-        }
-        else{
+        $stmt->bindParam(":rol", $rol);
+
+        if (!$stmt->execute()) {
             die('Query failed: ' . implode(' ', $stmt->errorInfo()));
         }
+
+        return true;
     }
 
     public function delete($id){
         $db = Conn::getPDO();
-        $stmt = $db->prepare("DELETE FROM `gebruiker_rol` WHERE gebruiker_id = :id");
+        $stmt = $db->prepare("DELETE FROM gebruiker WHERE id = :id");
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        if ($stmt->execute()){
-            $stmt = $db->prepare("DELETE FROM gebruiker WHERE id = :id");
-            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    
-            if ($stmt->execute()) {
-                return "Gebruiker succesvol verwijdert.";
-            } else {
-                return "Fout bij het verwijderen van gebruiker met id: " . $id;
-            }            
+        if ($stmt->execute()) {
+            return "Gebruiker succesvol verwijdert.";
         } else {
-            return "Fout bij het verwijderen van de rollen voor gebruiker met id: " . $id;
+            return "Fout bij het verwijderen van gebruiker met id: " . $id;
         }
     }
 

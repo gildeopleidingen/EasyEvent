@@ -1,14 +1,14 @@
-<?php $bevoegd = false; ?>
-<?php use App\Models\BeheerHomeModel; ?>
+<?php
+use App\Models\UserModel;
 
+$bevoegd = false;
+$roles = [];
 
-<?php 
-if (isset($_SESSION['Gebruikersemail'])) {
+if (isset($_SESSION['gebruiker']) && is_string($_SESSION['gebruiker'])) {
     $gebruiker = unserialize($_SESSION['gebruiker']);
-    $roles = $gebruiker->getRoles();
-}
-else {
-    $roles = [];
+    if ($gebruiker instanceof UserModel) {
+        $roles = $gebruiker->getRoles();
+    }
 }
 ?>
 <nav class="navbar navbar-expand-lg">

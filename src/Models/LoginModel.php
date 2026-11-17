@@ -43,15 +43,6 @@ public function login($gebruikersnaam, $wachtwoord): string
             $_SESSION['Gebruikersemail'] = $gebruiker['email'];
             $_SESSION['GebruikersID'] = $gebruiker['id'];
 
-            $stmtRol = $this->db->prepare(
-                "SELECT rol_id FROM `gebruiker_rol` WHERE gebruiker_id = :gebruikerID"
-            );
-            $stmtRol->bindParam(':gebruikerID', $gebruiker['id']);
-            $stmtRol->execute();
-
-            $rollen = $stmtRol->fetchAll(PDO::FETCH_COLUMN);
-            $_SESSION['RolID'] = $rollen;
-
             return 'events'; // success, redirect to events
         } else {
             return "Inlog gegevens zijn incorrect, probeer het opnieuw.";

@@ -31,8 +31,8 @@ class RegisterModel extends DBModel
             $hashedPassword = password_hash($wachtwoord, PASSWORD_DEFAULT);
 
             //bereid de query
-            $stmt = $this->db->prepare("INSERT INTO `gebruiker` (voornaam, achternaam, telefoon, email, wachtwoord, geverifieerd) 
-                                        VALUES (:voornaam, :achternaam, :telefoon, :email, :wachtwoord, :is_geverifieerd)");
+            $stmt = $this->db->prepare("INSERT INTO `gebruiker` (voornaam, achternaam, telefoon, email, wachtwoord, geverifieerd, rol)
+                                        VALUES (:voornaam, :achternaam, :telefoon, :email, :wachtwoord, :is_geverifieerd, :rol)");
 
             $stmt->bindParam(':voornaam', $voornaam);
             $stmt->bindParam(':achternaam', $achternaam);
@@ -40,18 +40,9 @@ class RegisterModel extends DBModel
             $stmt->bindParam(':email', $email);
             $stmt->bindParam(':wachtwoord', $hashedPassword);
             $stmt->bindparam(':is_geverifieerd', $verif);
-
-            if($stmt->execute())
-            {
-                $last_id = $this->db->lastInsertId();
-
-                //Koppel de gebruiker rol aan deze nieuwe gebruiker.
-                $rol = RolModel::getRoleIDByName('Gebruiker');
-                $stmt = $this->db->prepare("INSERT INTO `gebruiker_rol`(`gebruiker_id`, `rol_id`) VALUES (:gebruikerId, :rolId)");
-                $stmt->bindParam('gebruikerId', $last_id);
-                $stmt->bindParam('rolId', $rol);
-                $stmt->execute();
-            }
+            $rol = 'Gebruiker';
+            $stmt->bindParam(':rol', $rol);
+            $stmt->execute();
         } catch (\PDOException $e) {
             echo "Fout bij registratie: " . $e->getMessage();
         }

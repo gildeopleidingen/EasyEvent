@@ -49,7 +49,6 @@ error_reporting(E_ALL);
                         <th scope="col">Email</th>
                         <th scope="col">Telefoon</th>
                         <th scope="col">Kledingmaat</th>
-                        <th scope="col">Geverifieerd</th>
                         <th scope="col">Rollen</th>
                         <th scope="col">Actie</th>
                     </tr>
@@ -74,10 +73,7 @@ error_reporting(E_ALL);
                                 <?=$value->getkledingMaat() ?>
                             </td>
                             <td>
-                                <?=$value->getIsGeverifieerd() ?>
-                            </td>
-                            <td>
-                                <?=$value->getRoles() ?>
+                                <?=htmlspecialchars((string) $value->getRoles(), ENT_QUOTES, 'UTF-8') ?>
                             </td>
                             <td>
                                 <a href="/beheer/user/delete?userID=<?=$value->getId()?>" onclick="return confirm('Weet je zeker dat je deze gebruiker wilt verwijderen? Je kunt NIET meer terug!');">delete</a>
@@ -100,4 +96,3 @@ error_reporting(E_ALL);
     <script src="/js/searchbar.js?v=<?= filemtime(__DIR__ . '/../../../js/searchbar.js') ?>"></script>
 </body>
 </html>
-

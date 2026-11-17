@@ -79,18 +79,15 @@ error_reporting(E_ALL);
                     <div class="invalid-feedback">Voer een wachtwoord in.</div>
                 </div>
                 <div class="mb-3">
-                    <input type="text" id="checkbox_required" required hidden value="">
                     <label class="form-label">Rol <span class="verplicht">*</span></label>
-                    <div id="rol" class="form-check-group">
+                    <select class="form-select" id="rol" name="rol" required>
+                        <option value="" selected disabled>Selecteer een rol</option>
                         <?php foreach(RolModel::getAllRoles() as $key => $rol): ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="rol_<?= $rol->getID() ?>" name="rol[]" value="<?= $rol->getID() ?>">
-                                <label class="form-check-label" for="rol_<?= $rol->getID() ?>">
-                                    <?= htmlspecialchars($rol->getName()) ?>
-                                </label>
-                            </div>
+                            <option value="<?= htmlspecialchars($rol->getName(), ENT_QUOTES, 'UTF-8') ?>">
+                                <?= htmlspecialchars($rol->getName()) ?>
+                            </option>
                         <?php endforeach; ?>
-                    </div>
+                    </select>
                     <div class="invalid-feedback">Selecteer minstens één rol.</div>
                 </div>
 
@@ -117,14 +114,14 @@ error_reporting(E_ALL);
 
             <!-- Maat -->
             <select class="form-control" name="kledingmaat">
-                <option value="">Kies maat</option>
-                <option value="XXS">XXS</option>
-                <option value="XS">XS</option>
-                <option value="S">S</option>
-                <option value="M">M</option>
-                <option value="L">L</option>
-                <option value="XL">XL</option>
-                <option value="XXL">XXL</option>
+                <option value="0">Kies maat</option>
+                <option value="1">XXS</option>
+                <option value="2">XS</option>
+                <option value="3">S</option>
+                <option value="4">M</option>
+                <option value="5">L</option>
+                <option value="6">XL</option>
+                <option value="7">XXL</option>
             </select>
 
             <!-- Gender -->
@@ -170,7 +167,5 @@ error_reporting(E_ALL);
     <script src="/js/form-validatie.js"></script>
     <script src="/js/image-preview.js"></script>
     <script src="/js/animaties.js"></script>
-    <script src="/js/checkbox-validation.js"></script>
 </body>
 </html>
-
