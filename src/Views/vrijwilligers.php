@@ -21,9 +21,9 @@ $databaseUnavailable = $databaseUnavailable ?? false;
 
 <body>
 
-<main class="container volunteer-page py-4">
+<?php require __DIR__ . '/../../parts/nav.php'; ?>
 
-    <?php require __DIR__ . '/../../parts/nav.php'; ?>
+<main class="container volunteer-page py-4">
 
     <section class="volunteer-hero mb-4">
 
