@@ -1,10 +1,19 @@
 <?php
+<<<<<<< HEAD
 $gebruiker = null;
 $error = null;
 $success = null;
+=======
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $voornaam = $_POST['voornaam'];
+    $achternaam = $_POST['achternaam'];
+    $geboortedatum = $_POST['geboortedatum'];
+    $email = $_POST['email'];
+>>>>>>> c873dcc (commit)
 
 if (isset($_SESSION['gebruiker'])) {
     $gebruiker = unserialize($_SESSION['gebruiker']);
+<<<<<<< HEAD
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -28,6 +37,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$voornaam, $achternaam, $geboortedatum, $ouder_id, $postcode, $plaatsnaam, $huisnummer]);
         $success = 'Kind is toegevoegd.';
     }
+=======
+    $ouder_id = $gebruiker->getId();
+
+    $stmt = \App\Conn::getPDO()->prepare(
+        "INSERT INTO gebruiker (voornaam, achternaam, geboortedatum, email, ouder_id)
+         VALUES (?, ?, ?, ?, ?)"
+    );
+
+    $stmt->execute([$voornaam, $achternaam, $geboortedatum, $email, $ouder_id]);
+>>>>>>> c873dcc (commit)
 }
 ?>
 
@@ -89,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="date" id="geboortedatum" name="geboortedatum" class="form-control rounded-0" placeholder="Geboortedatum" required>
                         <label for="geboortedatum">Geboortedatum</label>
                     </div>
+<<<<<<< HEAD
                     <p class="text-muted text-center ms-6">Adresgegevens (standaard van jou, pas aan indien nodig)</p>
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -110,6 +130,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    value="<?php echo htmlspecialchars($gebruiker->getHuisnummer() ?? ''); ?>" required>
                             <label for="huisnummer">Huisnummer</label>
                         </div>
+=======
+                    <div class="form-floating mb-3">
+                        <input type="email" id="email" name="email" class="form-control rounded-0" placeholder="Email" required>
+                        <label for="email">Email</label>
+>>>>>>> c873dcc (commit)
                     </div>
                     <button class="btn btn-primary w-100 login-btn mt-3" type="submit">Kind Toevoegen</button>
                 </form>
