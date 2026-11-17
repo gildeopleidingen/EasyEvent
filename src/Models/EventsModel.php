@@ -28,7 +28,8 @@ class EventsModel extends DBModel
         $db = $mysql->getPDO();
 
         $sql = "SELECT 
-                    event.id, event.naam AS eventName, 
+                    event.id, 
+                    event.naam AS eventName, 
                     event.beschrijving AS eventInfo, 
                     GROUP_CONCAT(`event_tijd`.datum SEPARATOR ',') AS eventDate,
                     event.hoofd_event AS hoofdEventID
@@ -53,21 +54,10 @@ class EventsModel extends DBModel
                     $eventDates[] = ['date' => $date, 'startTime' => null, 'endTime' => null];
                 }
             }
-            $event = new EventModel(
-                 0,
-                $row['eventName'],
-                $row['eventInfo'],
-                '',
-                '',
-                '',
-                '',
-                '',
-                [],
-                $eventDates,
-                ''
-            );
-            $event->addEventID($row['id']);
-            $event->hoofdEventID = $row['hoofdEventID'];
+            $event = new EventModel();
+            $event->setEventID($row['id']);
+            $event->setEventName($row['eventName']);
+            $event->setEventInfo($row['eventInfo']);
             $events[] = $event;
         }
 
@@ -82,6 +72,8 @@ class EventsModel extends DBModel
                     e.naam           AS eventName, 
                     e.beschrijving   AS eventInfo, 
                     et.datum         AS eventDate,
+                    et.begin_tijd    AS startTime,
+                    et.eind_tijd     AS endTime,
                     e.hoofd_event    AS hoofdEventID,
                     e.organisator_id AS organisator,
                     et.land          AS Land,
@@ -110,20 +102,14 @@ class EventsModel extends DBModel
     
         $events = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $event = new EventModel(
-                (int)$row['organisator'],
-                $row['eventName'],
-                $row['eventInfo'],
-                $row['Land'] ?? 'Unknown',
-                $row['Plaats'] ?? 'Unknown',
-                $row['Straatnaam'] ?? 'Unknown',
-                $row['Huisnummer'] ?? 'Unknown',
-                $row['Postcode'] ?? 'Unknown',
-                isset($row['SectorIDs']) ? array_map('intval', explode(',', $row['SectorIDs'])) : [],
-                [['date' => $row['eventDate'], 'startTime' => null, 'endTime' => null]], 
-            );
-            $event->eventID = $row['id'];
-            $event->hoofdEventID = $row['hoofdEventID'];
+            $event = new EventModel();
+            $event->setEventID((int)$row['id']);
+            $event->setEventName($row['eventName']);
+            $event->setEventInfo($row['eventInfo']);
+            $event->setEventOrganizer((int)$row['organisator']);
+            $event->setHoofdEventID((int)$row['hoofdEventID']);
+            $event->setEventSector($row['SectorIDs']);
+            $event->setEventTimes([['date' => $row['eventDate'], 'startTime' => $row['startTime'], 'endTime' => $row['endTime']]]);
             $events[] = $event;
         }
     
