@@ -36,6 +36,7 @@ class EventsModel extends DBModel
                 FROM 
                     event 
                 LEFT OUTER JOIN `event_tijd` ON event.id=`event_tijd`.event_id
+                WHERE event.removed = 0
                 GROUP BY event.id";
 
         $stmt = $db->prepare($sql);
@@ -92,7 +93,8 @@ class EventsModel extends DBModel
                     FROM sector_event
                     GROUP BY event_id
                 ) sagg
-                    ON sagg.event_id = e.id;
+                    ON sagg.event_id = e.id
+                WHERE e.removed = 0;
                 ";
         $stmt = $db->prepare($sql);
 
@@ -116,21 +118,73 @@ class EventsModel extends DBModel
         return $events;
     }
 
+    /**
+     * Verwijdert een event definitief uit de database, inclusief alles wat eraan vastzit:
+     * planning, inschrijvingen, activiteiten, dagen en sectorkoppelingen.
+     * Alles gebeurt in één transactie: lukt één stap niet, dan blijft alles staan.
+     */
     public static function delete($id){
-        // $db = Conn::getPDO();
-        // $stmt = $db->prepare("DELETE FROM `kpl_activiteit_event_tijd` WHERE gebruiker_ID = :id");
-        // $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        // if ($stmt->execute()){
-        //     $stmt = $db->prepare("DELETE FROM `event` WHERE ID = :id");
-        //     $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    
-        //     if ($stmt->execute()) {
-        //         return "Gebruiker succesvol verwijdert.";
-        //     } else {
-        //         return "Fout bij het verwijderen van gebruiker met id: " . $id;
-        //     }            
-        // } else {
-        //     return "Fout bij het verwijderen van de rollen voor gebruiker met id: " . $id;
-        // }
+        $db = Conn::getPDO();
+        $params = [':id' => (int)$id];
+
+        $db->beginTransaction();
+        try {
+            // Vrijwilligersplanning van de activiteiten van dit event
+            $db->prepare("
+                DELETE p FROM planning p
+                JOIN activiteit_event_tijd aet ON aet.id = p.activiteit_event_tijd_id
+                JOIN event_tijd et ON et.id = aet.event_tijd_id
+                WHERE et.event_id = :id
+            ")->execute($params);
+
+            // Inschrijvingen op de dagen van dit event
+            $db->prepare("
+                DELETE i FROM inschrijving i
+                JOIN event_tijd et ON et.id = i.event_tijd_id
+                WHERE et.event_id = :id
+            ")->execute($params);
+
+            // Activiteiten van dit event onthouden voordat de koppelingen weg zijn
+            $stmt = $db->prepare("
+                SELECT DISTINCT aet.activiteit_id
+                FROM activiteit_event_tijd aet
+                JOIN event_tijd et ON et.id = aet.event_tijd_id
+                WHERE et.event_id = :id
+            ");
+            $stmt->execute($params);
+            $activiteitIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            $db->prepare("
+                DELETE aet FROM activiteit_event_tijd aet
+                JOIN event_tijd et ON et.id = aet.event_tijd_id
+                WHERE et.event_id = :id
+            ")->execute($params);
+
+            // Activiteiten zelf, alleen als geen ander event ze nog gebruikt
+            $stmtActiviteit = $db->prepare("
+                DELETE FROM activiteit
+                WHERE id = :activiteit_id
+                AND NOT EXISTS (SELECT 1 FROM activiteit_event_tijd WHERE activiteit_id = :activiteit_id2)
+            ");
+            foreach ($activiteitIds as $activiteitId) {
+                $stmtActiviteit->execute([':activiteit_id' => $activiteitId, ':activiteit_id2' => $activiteitId]);
+            }
+
+            $db->prepare("DELETE FROM event_tijd WHERE event_id = :id")->execute($params);
+            $db->prepare("DELETE FROM sector_event WHERE event_id = :id")->execute($params);
+            // Sub-events niet meeverwijderen, alleen loskoppelen
+            $db->prepare("UPDATE `event` SET hoofd_event = NULL WHERE hoofd_event = :id")->execute($params);
+
+            $stmt = $db->prepare("DELETE FROM `event` WHERE id = :id");
+            $stmt->execute($params);
+            $verwijderd = $stmt->rowCount() > 0;
+
+            $db->commit();
+            return $verwijderd;
+        } catch (\PDOException $e) {
+            $db->rollBack();
+            error_log('Event verwijderen mislukt: ' . $e->getMessage());
+            return false;
+        }
     }
 }

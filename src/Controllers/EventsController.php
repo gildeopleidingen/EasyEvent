@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Controller;
 use App\Conn;
 use App\Models\EventsModel;
+use App\Models\RolModel;
 
 class EventsController extends Controller
 {
@@ -29,7 +30,7 @@ class EventsController extends Controller
     }
 
     public function delete() {
-        if (!isset($_GET['userID'])) {
+        if (!isset($_GET['eventID'])) {
             $this->redirect('/beheer/event');
             exit();
         }
@@ -38,7 +39,12 @@ class EventsController extends Controller
             $this->redirect('/login');
             exit();
         }
-        $id = intval($_GET['userID']);
+        // Alleen een Admin of Organisator mag events verwijderen.
+        if (!RolModel::isBevoegd($_SESSION['GebruikersID'] ?? 0)) {
+            $this->redirect('/beheer/event');
+            exit();
+        }
+        $id = intval($_GET['eventID']);
         EventsModel::delete($id);
         $this->redirect('/beheer/event');
     }
