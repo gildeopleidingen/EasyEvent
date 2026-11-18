@@ -11,6 +11,7 @@ use App\Models\UsersModel;
 use App\Models\EventEditModel;
 use App\Models\SectorModel;
 use App\Models\ActivityModel;
+use App\Models\EventTijdModel;
 use App\Models\RolModel;
 
 class BeheerEventAanmakenController extends Controller {
@@ -19,7 +20,11 @@ class BeheerEventAanmakenController extends Controller {
     }
 
     public function step2() {
-        $this->render("beheer/event-aanmaken-stap-2");
+        $eventId = (int)($_GET['eventId'] ?? 0);
+        $this->render("beheer/event-aanmaken-stap-2", [
+            'eventId' => $eventId,
+            'dagen' => EventTijdModel::getDagenByEventId($eventId)
+        ]);
     }
 
     public function sendEvent(){
@@ -96,7 +101,7 @@ class BeheerEventAanmakenController extends Controller {
             $this->redirect('/beheer/event-aanmaken-stap-2?eventId='. $eventModel->getEventID() .'');
             return; // Ensure to return after rendering
         } else {
-            $this->render('beheer/event-aanmaken', ['error' => $errors]);
+            $this->render('beheer/event-aanmaken', ['error' => 'Het event kon niet worden opgeslagen. Controleer de ingevulde gegevens.']);
         }
 
     }
@@ -112,41 +117,79 @@ class BeheerEventAanmakenController extends Controller {
             $this->render('beheer/home', ['error' => 'Organisator is niet geldig.']);
             return;
         }
-        $eventOrganizer = (int)$eventOrganizer;
-        $activiteitNamen = $_POST['activity-name'] ?? [];
-        $beginTijden = $_POST['activity-begintime'] ?? [];
-        $eindTijden = $_POST['activity-endtime'] ?? [];
-        $aantalPersonen = $_POST['activity-people'] ?? [];
 
-
-        $currentEventID = $_GET['eventId'] ?? null;
-
-        // Controleer of alle velden ingevuld zijn
-        if (empty($activiteitNamen) || empty($beginTijden) || empty($eindTijden) || empty($aantalPersonen)) {
-            var_dump($activiteitNamen);
-            var_dump($beginTijden);
-            var_dump($eindTijden);
-            var_dump($aantalPersonen);
-            var_dump($_POST);
-            $this->render('beheer/event-aanmaken-stap-2', ['error' => 'Alle velden zijn verplicht.']);
+        $eventId = (int)($_GET['eventId'] ?? 0);
+        // Alleen dagen die echt bij dit event horen zijn geldig.
+        $dagen = EventTijdModel::getDagenByEventId($eventId);
+        if (empty($dagen)) {
+            $this->redirect('/beheer/event');
             return;
         }
 
-        for ($i=0; $i < sizeof($activiteitNamen); $i++) { 
-        $activityModel = new ActivityModel($activiteitNamen[$i], $beginTijden[$i], $eindTijden[$i], $aantalPersonen[$i]);
+        // Verwachte invoer: activiteiten[<event_tijd_id>][<n>][naam|begin_tijd|eind_tijd|aantal_personen]
+        $invoer = isset($_POST['activiteiten']) && is_array($_POST['activiteiten']) ? $_POST['activiteiten'] : [];
+        $fout = function (string $melding) use ($eventId, $dagen, $invoer) {
+            // Opnieuw tonen met de ingevulde gegevens, zodat niets verloren gaat.
+            $this->render('beheer/event-aanmaken-stap-2', [
+                'eventId' => $eventId,
+                'dagen' => $dagen,
+                'oudeInvoer' => $invoer,
+                'error' => $melding
+            ]);
+        };
 
-        // Add activity validation
-        
-        $result = ActivityModel::sendActivity($activityModel);
+        $activiteiten = [];
+        $dagNummer = 0;
+        foreach ($dagen as $eventTijdId => $dag) {
+            $dagNummer++;
+            foreach (($invoer[$eventTijdId] ?? []) as $activiteit) {
+                if (!is_array($activiteit)) {
+                    continue;
+                }
+                $naam = trim((string)($activiteit['naam'] ?? ''));
+                $begin = (string)($activiteit['begin_tijd'] ?? '');
+                $eind = (string)($activiteit['eind_tijd'] ?? '');
+                $personen = filter_var($activiteit['aantal_personen'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 
+                if ($naam === '' || mb_strlen($naam) > 255) {
+                    $fout("Dag $dagNummer: vul bij iedere activiteit een naam in (maximaal 255 tekens).");
+                    return;
+                }
+                if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $begin) || !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $eind)) {
+                    $fout("Dag $dagNummer: vul bij \"$naam\" een geldige begin- en eindtijd in.");
+                    return;
+                }
+                if ($begin >= $eind) {
+                    $fout("Dag $dagNummer: bij \"$naam\" moet de begintijd vóór de eindtijd liggen.");
+                    return;
+                }
+                if ($personen === false) {
+                    $fout("Dag $dagNummer: vul bij \"$naam\" een geldig aantal personen in.");
+                    return;
+                }
 
-        if ($result) {
-            $this->redirect('/beheer/event-overzicht?'. $currentEventID .'');
-            return; // Ensure to return after rendering
-        } else {
-            $this->render('beheer/event-aanmaken-stap-2', ['error' => $result]);
+                $activiteiten[] = [
+                    'event_tijd_id' => $eventTijdId,
+                    'naam' => $naam,
+                    'begin_tijd' => $begin,
+                    'eind_tijd' => $eind,
+                    'aantal_personen' => $personen
+                ];
+            }
         }
+
+        if (empty($activiteiten)) {
+            $fout('Voeg minstens één activiteit toe.');
+            return;
         }
+
+        if (!ActivityModel::sendActivitiesPerDag($activiteiten)) {
+            $fout('De activiteiten konden niet worden opgeslagen. Probeer het opnieuw.');
+            return;
+        }
+
+        // Na het aanmaken direct terug naar het evenementenoverzicht.
+        $this->redirect('/events');
     }
     
     public function editEvent() {

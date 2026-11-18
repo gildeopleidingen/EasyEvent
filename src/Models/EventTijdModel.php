@@ -57,4 +57,27 @@ class EventTijdModel extends DBModel{
         
         return $eventTijden;
     }
+
+    /**
+     * De dagen van een event (id, datum, begin_tijd, eind_tijd), gesorteerd op datum.
+     * Geïndexeerd op event_tijd.id; gebruikt voor de dag-tabs bij het aanmaken van activiteiten.
+     */
+    public static function getDagenByEventId(int $eventId): array
+    {
+        $db = Conn::getPDO();
+        $stmt = $db->prepare("
+            SELECT id, datum, begin_tijd, eind_tijd
+            FROM event_tijd
+            WHERE event_id = :eventid
+            ORDER BY datum, begin_tijd
+        ");
+        $stmt->execute([':eventid' => $eventId]);
+
+        $dagen = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $dagen[(int)$row['id']] = $row;
+        }
+        return $dagen;
+    }
+
 }

@@ -17,8 +17,37 @@ class EventModel
     public $images = [];  //[[imageName,imageDescription],[imageName,imageDescription]]
     public $hoofdEventID;
     public bool $isIngeschreven = false; // inschrijf voor gebruiker
+    // Locatie (wordt per event_tijd opgeslagen)
+    public $land;
+    public $plaats;
+    public $straatnaam;
+    public $huisnummer;
+    public $postcode;
 
-    public function __construct(){}
+    public function __construct(
+        ?int $eventOrganizer = null,
+        ?string $eventName = null,
+        ?string $eventInfo = null,
+        ?string $land = null,
+        ?string $plaats = null,
+        ?string $straatnaam = null,
+        ?string $huisnummer = null,
+        ?string $postcode = null,
+        array $sector = [],
+        array $eventTimes = []
+    ) {
+        // Zonder argumenten (bijv. in EventsModel) worden de setters gebruikt.
+        if ($eventOrganizer !== null) { $this->eventOrganizer = $eventOrganizer; }
+        if ($eventName !== null) { $this->eventName = $eventName; }
+        if ($eventInfo !== null) { $this->eventInfo = $eventInfo; }
+        $this->land = $land;
+        $this->plaats = $plaats;
+        $this->straatnaam = $straatnaam;
+        $this->huisnummer = $huisnummer;
+        $this->postcode = $postcode;
+        $this->eventSector = array_map('intval', $sector);
+        $this->eventTimes = $eventTimes;
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Setters
@@ -206,59 +235,52 @@ class EventModel
         $stmtEvent->bindParam(':eventInfo', $event->eventInfo);
         $stmtEvent->bindParam(':eventOrganisator', $event->eventOrganizer);
 
-        if ($stmtEvent->execute()) {
-            error_log("Event insertion successful: " . json_encode($event));
+        // Event, tijden en sectoren samen opslaan: lukt één deel niet, dan wordt niets opgeslagen.
+        $db->beginTransaction();
+        try {
+            $stmtEvent->execute();
             // Retrieve the last inserted ID for the event
-            $event->eventID = $db->lastInsertId();
+            $event->eventID = (int)$db->lastInsertId();
+
             // Insert each time slot into the `event_tijd` table
-            $sqlEventTime = "INSERT INTO `event_tijd` 
-                             (event_id, land, plaatsnaam, straatnaam, huisnummer, postcode, datum, begin_tijd, eind_tijd) 
+            $sqlEventTime = "INSERT INTO `event_tijd`
+                             (event_id, land, plaatsnaam, straatnaam, huisnummer, postcode, datum, begin_tijd, eind_tijd)
                              VALUES (:eventID, :Land, :Plaats, :Straatnaam, :Huisnummer, :Postcode, :date, :BeginTijd, :EindTijd)";
- 
             $stmtEventTime = $db->prepare($sqlEventTime);
 
-            $eventTimesArray = $event->getEventTimes();
-
-            foreach ($eventTimesArray as $slot) {
-                $stmtEventTime->bindParam(':eventID', $slot->eventId);
-                $stmtEventTime->bindParam(':Land', $slot->Land);
-                $stmtEventTime->bindParam(':Plaats', $slot->Plaats);
-                $stmtEventTime->bindParam(':Straatnaam', $slot->Straatnaam);
-                $stmtEventTime->bindParam(':Huisnummer', $slot->Huisnummer);
-                $stmtEventTime->bindParam(':Postcode', $slot->Postcode);
-
-                $stmtEventTime->bindParam(':date', $slot['date']);
-                $stmtEventTime->bindParam(':BeginTijd', $slot['BeginTime']);
-                $stmtEventTime->bindParam(':EindTijd', $slot['EndTime']);
-
-                if (!$stmtEventTime->execute()) {
-                    // Rollback if the time slot insertion fails
-                    return "The time slot insertion failed!";
-                }
+            foreach ($event->getEventTimes() as $slot) {
+                $stmtEventTime->execute([
+                    ':eventID' => $event->eventID,
+                    ':Land' => $event->land,
+                    ':Plaats' => $event->plaats,
+                    ':Straatnaam' => $event->straatnaam,
+                    ':Huisnummer' => $event->huisnummer,
+                    ':Postcode' => $event->postcode,
+                    ':date' => $slot['date'],
+                    ':BeginTijd' => $slot['BeginTime'],
+                    ':EindTijd' => $slot['EndTime']
+                ]);
             }
-            // echo "Successfully added event and all time slots!";
-            // return "Successfully added event and all time slots!";
 
             $sqlSector = "INSERT INTO sector_event
                           (event_id, sector_id)
                           VALUES (:EventID, :SectorID)";
-
             $stmtSector = $db->prepare($sqlSector);
 
-            foreach ($event->eventSector as $key => $value) {
-                $stmtSector->bindParam(':EventID', $event->eventID);
-                $stmtSector->bindParam(':SectorID', $value);
-
-                if (!$stmtSector->execute()) {
-                    return "The sector insertion failed!";
-                }
+            foreach ($event->eventSector as $sectorId) {
+                $stmtSector->execute([
+                    ':EventID' => $event->eventID,
+                    ':SectorID' => $sectorId
+                ]);
             }
-            var_dump($event);
-            // die;
+
+            $db->commit();
+            return true;
+        } catch (\PDOException $e) {
+            $db->rollBack();
+            error_log("Event insertion failed: " . $e->getMessage());
+            return false;
         }
-        error_log("Event insertion failed: " . implode(", ", $stmtEvent->errorInfo()));
-        // echo "Insertion into `event` table failed!";
-        return "Insertion into `event` table failed!";
     }
 }
 

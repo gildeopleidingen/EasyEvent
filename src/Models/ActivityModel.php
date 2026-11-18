@@ -98,6 +98,43 @@ class ActivityModel extends DBModel
             }
         }
     }
+    /**
+     * Slaat de activiteiten van alle dagen van een event in één transactie op.
+     * $activiteiten: lijst van ['event_tijd_id', 'naam', 'begin_tijd', 'eind_tijd', 'aantal_personen'].
+     * Iedere activiteit wordt gekoppeld aan de dag (event_tijd) waarvoor hij is aangemaakt.
+     */
+    public static function sendActivitiesPerDag(array $activiteiten): bool
+    {
+        $db = Conn::getPDO();
+
+        $stmtActivity = $db->prepare("INSERT INTO activiteit (naam) VALUES (:naam)");
+        $stmtActivityTime = $db->prepare("
+            INSERT INTO `activiteit_event_tijd`
+                (activiteit_id, event_tijd_id, begin_tijd, eind_tijd, aantal_personen)
+            VALUES (:ActivityID, :EventTijdID, :BeginTijd, :EindTijd, :AantalPersonen)
+        ");
+
+        $db->beginTransaction();
+        try {
+            foreach ($activiteiten as $activiteit) {
+                $stmtActivity->execute([':naam' => $activiteit['naam']]);
+                $stmtActivityTime->execute([
+                    ':ActivityID' => (int)$db->lastInsertId(),
+                    ':EventTijdID' => $activiteit['event_tijd_id'],
+                    ':BeginTijd' => $activiteit['begin_tijd'],
+                    ':EindTijd' => $activiteit['eind_tijd'],
+                    ':AantalPersonen' => $activiteit['aantal_personen']
+                ]);
+            }
+            $db->commit();
+            return true;
+        } catch (\PDOException $e) {
+            $db->rollBack();
+            error_log('Activiteiten opslaan mislukt: ' . $e->getMessage());
+            return false;
+        }
+    }
+
     public static function getActiviteitByID(int $activiteitId): array {
         $mysql = Conn::getInstance();
         $pdo = $mysql->getPDO();
