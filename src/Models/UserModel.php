@@ -73,7 +73,11 @@ class UserModel
     public function setPlaatsnaam($value) {$this->plaatsnaam = $value;}
     public function setProfielfoto($value) {$this->profielfoto = $value;}
     public function setIsGeverifieerd($value) {$this->is_geverifieerd = $value;}
-    public function setKledingmaat($value) {$this->kledingmaat = $value;}
+    public function setKledingmaat($value)
+    {
+        $maten = [ 1 => 'N/A', 2 => 'XXS', 3 => 'XS', 4 => 'S', 5 => 'M', 6 => 'L', 7 => 'XL', 8 => 'XXL',];
+        $this->kledingmaat = $maten[$value ?? ''] ?? $value;
+    }
     public function setOuderId($value) {$this->ouder_ID = $value;}
     public function setRoles($value) {$this->roles = $value;}
     public function setWachtwoord($value){$this->wachtwoord = password_hash($value, PASSWORD_DEFAULT);}
@@ -198,7 +202,7 @@ class UserModel
         $mysql = Conn::getInstance();
         $db = $mysql->getPDO();
 
-        $sql = "SELECT g.id, g.voornaam, g.achternaam, g.email, g.telefoon, IF(g.geverifieerd = 1, 'Ja', 'Nee') AS Is_Geverifieerd, g.Kledingmaat AS maat, g.rol AS Rollen
+        $sql = "SELECT g.id, g.voornaam, g.achternaam, g.email, g.telefoon, IF(g.geverifieerd = 1, 'Ja', 'Nee') AS Is_Geverifieerd, g.kleding_maat_id AS maat, g.rol AS Rollen
                 FROM gebruiker g
                 ORDER BY g.achternaam, g.voornaam";
         $stmt = $db->prepare($sql);
