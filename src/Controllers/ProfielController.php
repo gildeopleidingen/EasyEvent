@@ -91,12 +91,33 @@ class ProfielController extends Controller
             return $this->render('login', ['error' => 'Je moet ingelogd zijn om een kind toe te voegen.']);
         }
 
-        if (empty($_POST['voornaam']) || empty($_POST['achternaam']) || empty($_POST['geboortedatum'])) {
-            return $this->render('add-child', ['error' => 'Alle velden zijn verplicht.']);
+        $gebruiker = unserialize($_SESSION['gebruiker']);
+        $voornaam = trim($_POST['voornaam'] ?? '');
+        $achternaam = trim($_POST['achternaam'] ?? '');
+        $geboortedatum = $_POST['geboortedatum'] ?? '';
+
+        if ($voornaam === '' || $achternaam === '' || $geboortedatum === '') {
+            return $this->render('add-child', [
+                'gebruiker' => $gebruiker,
+                'error' => 'Alle velden zijn verplicht.'
+            ]);
         }
 
+        $stmt = \App\Conn::getPDO()->prepare(
+            "INSERT INTO kinderen (voornaam, achternaam, geboortedatum, ouder_id)
+             VALUES (?, ?, ?, ?)"
+        );
+        $stmt->execute([
+            $voornaam,
+            $achternaam,
+            $geboortedatum,
+            $gebruiker->getId()
+        ]);
 
-        return $this->render('add-child', ['success' => 'Kind succesvol toegevoegd!']);
+        return $this->render('add-child', [
+            'gebruiker' => $gebruiker,
+            'success' => 'Kind succesvol toegevoegd!'
+        ]);
     }
 
 
