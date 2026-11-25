@@ -11,7 +11,13 @@ class VolunteerController extends Controller
     {
         try {
             $volunteerModel = new VolunteerModel();
-            $activities = $volunteerModel->getOpenActivities();
+            $user = isset($_SESSION['gebruiker'])
+                ? unserialize($_SESSION['gebruiker'])
+                : null;
+
+            $activities = $volunteerModel->getOpenActivities(
+                $user ? (int) $user->getId() : null
+            );
 
             $this->render('vrijwilligers', [
                 'activities' => $activities,

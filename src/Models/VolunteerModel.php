@@ -8,8 +8,13 @@ use RuntimeException;
 
 class VolunteerModel
 {
-    public function getOpenActivities(): array
+    public function getOpenActivities(?int $gebruikerId = null): array
     {
+        // Zonder expliciet id: gebruik de ingelogde gebruiker uit de sessie.
+        if ($gebruikerId === null && isset($_SESSION['GebruikersID'])) {
+            $gebruikerId = (int) $_SESSION['GebruikersID'];
+        }
+
         $db = Conn::getPDO();
 
         if (!$db instanceof PDO) {
@@ -35,7 +40,10 @@ class VolunteerModel
                 ) AS location,
 
                 COUNT(DISTINCT p.gebruiker_id)
-                    AS registered_volunteers
+                    AS registered_volunteers,
+
+                COALESCE(MAX(p.gebruiker_id = :uid), 0)
+                    AS is_registered
 
             FROM activiteit_event_tijd aet
 
@@ -71,7 +79,7 @@ class VolunteerModel
         ";
 
         $stmt = $db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([':uid' => (int) $gebruikerId]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

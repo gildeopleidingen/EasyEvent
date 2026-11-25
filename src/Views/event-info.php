@@ -1,3 +1,9 @@
+<?php
+$gebruikerID   = $gebruikerID   ?? null;
+$activities    = $activities    ?? [];
+$organisations = $organisations ?? [];
+$active_roles  = $active_roles  ?? [];
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,7 +28,6 @@
 <body>
     <div class="container-fluid vh-100 d-flex flex-column">
         <?php require_once("./parts/nav.php"); ?>
-        <?php session_start(); ?>
         <?php if (isset($error)): ?>
             <div class="alert alert-danger"><?php echo $error; ?></div>
         <?php endif; ?>
@@ -68,40 +73,29 @@
                         </div>
                         <input type="hidden" name="eventID" value="<?= htmlspecialchars($event->getEventID()) ?>" />
                         <div class="modal-body">
-                            <?php if (!empty($active_roles)): ?>
-                                Kies de rol waarin je aan de activiteit deelneemt.
-                                <?php foreach ($active_roles as $role): ?>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" id="role<?=  htmlspecialchars($role->getName()) ?>" name="role" <?php if ($event::hasRole($activities, $role)) : ?> checked="checked"<?php endif; ?> value="<?= htmlspecialchars($role->getID()) ?>">
-                                    <label class="form-check-label" for="role<?= htmlspecialchars($role->getName()) ?>"><?= htmlspecialchars($role->getName()) ?></label>
-                                </div>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <p>Geen rollen gevonden.</p>
-                            <?php endif; ?>
-
-                            <?php if (!empty($organisations)): ?>
-                                Kies de organisatie waarvoor je aan de activiteit deelneemt.
-                                <?php foreach ($organisations as $organisation): ?>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" id="organisation<?= htmlspecialchars($organisation->getName()) ?>" name="organisation" <?php if ($event::hasOrganisation($activities, $organisation)) : ?> checked="checked"<?php endif; ?> value="<?= htmlspecialchars($organisation->getID()) ?>">
-                                    <label class="form-check-label" for="organisation<?= htmlspecialchars($organisation->getName()) ?>"><?= htmlspecialchars($organisation->getName()) ?></label>
-                                </div>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <p>Geen organisaties gevonden.</p>
-                            <?php endif; ?>
 
                             <?php if (!empty($activities)): ?>
-                                Kies de activiteit waarin je aan wil d eelnemen.
+                                Kies de activiteit waarin je aan wil deelnemen.
                                 <?php foreach ($activities as $activity): ?>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="activity<?= htmlspecialchars($activity->getID()) ?>" name="activities[<?= htmlspecialchars($activity->getID()) ?>][checked]" <?php if ($activity->hasUser()) : ?> checked="checked"<?php endif; ?> value="<?= htmlspecialchars($activity->getID()) ?>">
                                     <label class="form-check-label" for="activity<?= htmlspecialchars($activity->getID()) ?>"><?= htmlspecialchars($activity->getName()) ?></label>
                                 </div>
-                                <div class="form-check">
-                                    <input type="text" readonly name="activities[<?= htmlspecialchars($activity->getID()) ?>][startTime]" value="<?= htmlspecialchars($activity->getBeginTijd()) ?>" />
-                                    <input type="text" readonly name="activities[<?= htmlspecialchars($activity->getID()) ?>][endTime]" value="<?= htmlspecialchars($activity->getEindTijd()) ?>" />
+                                <?php
+                                    $minTijd = substr($activity->minTijd ?? $activity->getBeginTijd(), 0, 5);
+                                    $maxTijd = substr($activity->maxTijd ?? $activity->getEindTijd(), 0, 5);
+                                ?>
+                                <div class="d-flex align-items-center gap-2 mb-3 ms-4">
+                                    <input type="time" class="form-control form-control-sm w-auto"
+                                           name="activities[<?= htmlspecialchars($activity->getID()) ?>][startTime]"
+                                           value="<?= htmlspecialchars(substr($activity->getBeginTijd(), 0, 5)) ?>"
+                                           min="<?= htmlspecialchars($minTijd) ?>" max="<?= htmlspecialchars($maxTijd) ?>" required />
+                                    <span>&ndash;</span>
+                                    <input type="time" class="form-control form-control-sm w-auto"
+                                           name="activities[<?= htmlspecialchars($activity->getID()) ?>][endTime]"
+                                           value="<?= htmlspecialchars(substr($activity->getEindTijd(), 0, 5)) ?>"
+                                           min="<?= htmlspecialchars($minTijd) ?>" max="<?= htmlspecialchars($maxTijd) ?>" required />
+                                    <small class="text-muted">(<?= htmlspecialchars($minTijd) ?> &ndash; <?= htmlspecialchars($maxTijd) ?>)</small>
                                 </div>
                                 <?php endforeach; ?>
                             <?php else: ?>
@@ -128,12 +122,6 @@
                             <?php endif; ?>
                         </div>
                 <?php endif; ?>
-                <a
-    href="/vrijwilligers?eventID=<?= (int)$event->getEventID() ?>"
-    class="btn btn-success w-100"
->
-    Inschrijven als vrijwilliger
-</a>
             </div>
         </div>
     </div>

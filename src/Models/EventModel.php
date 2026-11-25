@@ -11,254 +11,370 @@ class EventModel
     public string $eventName;
     public string $eventInfo;
     public int $eventOrganizer;
+    public string $eventDescription = '';
+    public string $eventLocation = '';
+    public string $eventLand = '';
+    public string $eventPlaats = '';
+    public string $eventStraatnaam = '';
+    public string $eventHuisnummer = '';
+    public string $eventPostcode = '';
     public $eventSector = [];
-    public $eventTimes = [];   //[[dates, startTimes,endTimes],[dates, startTimes,endTimes]]
-    public $eventSectorInfo = []; //[[sectorName,sectorStarttime,sectorEndTime,Vrijwilligers],[sectorName,sectorStarttime,sectorEndTime,Vrijwilligers]]
-    public $images = [];  //[[imageName,imageDescription],[imageName,imageDescription]]
+    public $eventTimes = [];
+    public $eventSectorInfo = [];
+    public $images = [];
     public $hoofdEventID;
-    public bool $isIngeschreven = false; // inschrijf voor gebruiker
+    public bool $isIngeschreven = false;
+    public string $eventBanner = '';
 
-    public function __construct(){}
+    /**
+     * Alle parameters zijn optioneel, zodat `new EventModel()` (lijsten)
+     * en `new EventModel($organisator, $naam, ...)` (event aanmaken) beide werken.
+     *
+     * @param array|string|null $sector
+     */
+    public function __construct(
+        ?int $eventOrganizer = null,
+        ?string $eventName = null,
+        ?string $eventInfo = null,
+        ?string $land = null,
+        ?string $plaats = null,
+        ?string $straatnaam = null,
+        ?string $huisnummer = null,
+        ?string $postcode = null,
+        $sector = [],
+        array $eventTimes = []
+    ) {
+        if ($eventOrganizer !== null) {
+            $this->eventOrganizer = $eventOrganizer;
+        }
+        if ($eventName !== null) {
+            $this->eventName = $eventName;
+        }
+        if ($eventInfo !== null) {
+            $this->eventInfo = $eventInfo;
+        }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        $this->eventLand = (string) $land;
+        $this->eventPlaats = (string) $plaats;
+        $this->eventStraatnaam = (string) $straatnaam;
+        $this->eventHuisnummer = (string) $huisnummer;
+        $this->eventPostcode = (string) $postcode;
+
+        $this->setEventSector($sector);
+        $this->eventTimes = $eventTimes;
+    }
+
     // Setters
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    public function setEventName(string $eventName){
+
+    public function setEventName(string $eventName)
+    {
         $this->eventName = $eventName;
     }
-    public function setEventInfo(string $eventInfo){
+
+    public function setEventInfo(string $eventInfo)
+    {
         $this->eventInfo = $eventInfo;
     }
-    public function setEventDescription(string $eventDescription){
+
+    public function setEventDescription(string $eventDescription)
+    {
         $this->eventDescription = $eventDescription;
     }
-    public function setEventLocation(string $eventLocation){
+
+    public function setEventLocation(string $eventLocation)
+    {
         $this->eventLocation = $eventLocation;
     }
-    public function setEventSector(?string $Sector){
-        if ($Sector === null || $Sector === '') {
+
+    /**
+     * Accepteert "1, 2, 3" (uit de database), een array met ids
+     * (uit het formulier) of null/''.
+     *
+     * @param array|string|null $sector
+     */
+    public function setEventSector($sector)
+    {
+        if ($sector === null || $sector === '' || $sector === []) {
             $this->eventSector = [];
             return;
         }
-        $this->eventSector[] =  array_map('intval', explode(',', $Sector));
-    }
-    public function setEventOrganizer(int $eventOrganizer){
-        $this->eventOrganizer = $eventOrganizer;
-    }
-    public function setEventTimes(array $eventTimes) {
-        $this->eventTimes = $eventTimes;
-    }
-    public function setHoofdEventID(int $hoofdEventID){
-        $this->hoofdEventID = $hoofdEventID;
-    }
-    public function setEventID(string $eventID){
-        $this->eventID = $eventID;
+
+        if (!is_array($sector)) {
+            $sector = explode(',', (string) $sector);
+        }
+
+        $this->eventSector = array_values(
+            array_filter(array_map('intval', $sector))
+        );
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    public function setEventOrganizer(int $eventOrganizer)
+    {
+        $this->eventOrganizer = $eventOrganizer;
+    }
+
+    public function setEventTimes(array $eventTimes)
+    {
+        $this->eventTimes = $eventTimes;
+    }
+
+    public function setHoofdEventID(int $hoofdEventID)
+    {
+        $this->hoofdEventID = $hoofdEventID;
+    }
+
+    public function setEventID(string $eventID)
+    {
+        $this->eventID = (int) $eventID;
+    }
+
     // Adders
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    public function addEventTime(EventTijdModel $eventTijd){
-        if (!empty($timeSlot) 
-            && isset($timeSlot['dates'], $timeSlot['BeginTijd'], $timeSlot['EindTijd']) 
-            && $timeSlot['dates'] !== '' && $timeSlot['BeginTijd'] !== '' && $timeSlot['EindTijd'] !== '') 
-            {
+
+    /** Voegt een tijdslot toe: ['date' => ..., 'BeginTime' => ..., 'EndTime' => ...] */
+    public function addEventTime(array $timeSlot)
+    {
+        if (
+            !empty($timeSlot['date'])
+            && !empty($timeSlot['BeginTime'])
+            && !empty($timeSlot['EndTime'])
+        ) {
             $this->eventTimes[] = $timeSlot;
         }
     }
-    
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     // Getters
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    public function getEventID(){
+
+    public function getEventID()
+    {
         return $this->eventID;
     }
-    public function getEventName(){
+
+    public function getEventName()
+    {
         return $this->eventName;
     }
-    public function getEventInfo(){
+
+    public function getEventInfo()
+    {
         return $this->eventInfo;
     }
-    public function getEventSector(){
+
+    public function getEventSector()
+    {
         return $this->eventSector;
     }
-    public function getEventSectorAsString(){
+
+    public function getEventSectorAsString()
+    {
         return implode(',', array_map('intval', $this->eventSector));
     }
-    public function getEventOrganizer(){
+
+    public function getEventOrganizer()
+    {
         return $this->eventOrganizer;
     }
-    public function getEventTimes(){ 
+
+    public function getEventTimes()
+    {
         return $this->eventTimes;
     }
-    public function getHoofdEventID(){
+
+    public function getEventTime()
+    {
+        return $this->eventTimes;
+    }
+
+    public function getEventBanner(): string
+    {
+        return $this->eventBanner;
+    }
+
+    public function setEventBanner(string $eventBanner): void
+    {
+        $this->eventBanner = $eventBanner;
+    }
+
+    public function getHoofdEventID()
+    {
         return $this->hoofdEventID;
     }
-    public function getIngeschreven(){
+
+    public function getIngeschreven()
+    {
         return $this->isIngeschreven;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // functions
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Functions
+
     public static function hasRole(array $activities, RolModel $rol)
     {
-        foreach($activities as $activity)
-        {
-            if ($activity->hasRole() && $rol->getID() == $activity->getRolID())
-            {
+        foreach ($activities as $activity) {
+            if (
+                $activity->hasRole()
+                && $rol->getID() == $activity->getRolID()
+            ) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
-    public static function hasOrganisation(array $activities, OrganisationModel $organisation)
-    {
-        foreach($activities as $activity)
-        {
-            if ($activity->hasOrganisation() && $organisation->getID() == $activity->getOrganisationID())
-            {
+    public static function hasOrganisation(
+        array $activities,
+        OrganisationModel $organisation
+    ) {
+        foreach ($activities as $activity) {
+            if (
+                $activity->hasOrganisation()
+                && $organisation->getID() == $activity->getOrganisationID()
+            ) {
                 return true;
             }
         }
+
         return false;
     }
 
-    public function validateModel() {
-        //event
-        $title = $this->getEventName();
-        $description = $this->getEventInfo();
-        $dates = $this->getEventTimes(); 
-        $location = "";
-
-        // geen post gebruik eigenschappen van de class
-        if (isset($_POST['title']) && isset($_POST['description']) && isset($_POST['date']) && isset($_POST['location'])) {
-            // checks for invalid input for title
-            if (preg_match("/[éèêüåäöçñØ,.\-\':;!?\/\\\[\]()&@*#+\-=£€\$¥|~]/u",$_POST['title'])) {
-                $title = htmlspecialchars($_POST['title']);
-            }
-            // checks for invalid input for description
-            if (preg_match("/[éèêüåäöçñØ,.\-\':;!?\/\\\[\]()&@*#+\-=£€\$¥|~]/u",$_POST['description'])) {
-                $description = htmlspecialchars($_POST['description']);
-            }
-            // checks for invalid input for placename
-            if (isset($_POST['Placename[]']) && preg_match("/[éèêüåäöçñØ,.\-\'&\s]/u",$_POST['Placename[]'])) {
-                $location = htmlspecialchars($_POST['Placename']);
-            }
-            if (isset($_POST['date[]']) && isset($_POST['begin-time[]']) && isset($_POST['end-time[]'])) {
-                
-            }
-            if (isset($_POST['Country']) && $_POST['Country'] == "Netherland") {
-                if (isset($_POST['Address']) && !preg_match("/^\d{4}\s[A-Z]{2}$/", $_POST['Address'])) {
-                    $errors[] = "De postcode moet bestaan uit 4 cijfers, een spatie, en 2 hoofdletters.";
-                }
-            } else if (isset($_POST['Country']) && $_POST['Country'] == "België"){
-                if (isset($_POST['Address']) && !preg_match("/^\d{4}$/", $_POST['Address'])) {
-                    $errors[] = "De postcode moet bestaan uit 4 cijfers";
-                }
-            } else if (isset($_POST['Country']) && $_POST['Country'] == "Duitsland"){
-                if (isset($_POST['Address']) && !preg_match("/^\d{5}$/", $_POST['Address'])) {
-                    $errors[] = "De postcode moet bestaan uit 5 cijfers";
-                }
-            } else if (isset($_POST['Country']) && $_POST['Country'] == "Luxemburg"){
-                if (isset($_POST['Address']) && !preg_match("/^\d{4}$/", $_POST['Address'])) {
-                    $errors[] = "De postcode moet bestaan uit 4 cijfers";
-                }
-            }
-            if (!$title && !$description && !$location && !$date) {
-                $event = new EventModel();
-                $event->setEventName($title);
-                $event->setEventDescription($description);
-                $event->setEventLocation($location);
-            }
-        } 
-
-        if (isset($_POST["activityName1"]) && isset($_POST["activityTime1"]) && isset($_POST["activityPeople1"])){
-            if (preg_match("/[éèêüåäöçñØ,.\-\':;!?\/\\\[\]()&@*#+\-=£€\$¥|~]/u",$_POST['activityTitle'])) {
-                $description = htmlspecialchars($_POST['activityTitle']);
-            }
-            if (isset($_POST['activityTime1[]'])) {
-                 $date[] = $_POST['date[]'];    
-            }
-            if (isset($POST['activityPeople1'])){
-                $activityPeople = htmlspecialchars($_POST['activityPeople1']);
-            }
-        } 
-        if (!empty($errors)) {
-            return $errors;
-        }
-        return [];
-    }
-    
-    public static function sendEvent(EventModel $event)
+    /** Controleert het model zelf en geeft een lijst met foutmeldingen terug. */
+    public function validateModel(): array
     {
-        $mysql = Conn::getInstance();
-        $db = $mysql->getPDO();
-        
-        // SQL to insert event data into the `event` table, now including `hoofdEvent`
-        $sqlEvent = "INSERT INTO event (naam, beschrijving, organisator_id) VALUES (:eventName, :eventInfo, :eventOrganisator)";
+        $errors = [];
 
-        // Prepare and execute the query for the `event` table
-        $stmtEvent = $db->prepare($sqlEvent);
-        $stmtEvent->bindParam(':eventName', $event->eventName);
-        $stmtEvent->bindParam(':eventInfo', $event->eventInfo);
-        $stmtEvent->bindParam(':eventOrganisator', $event->eventOrganizer);
-
-        if ($stmtEvent->execute()) {
-            error_log("Event insertion successful: " . json_encode($event));
-            // Retrieve the last inserted ID for the event
-            $event->eventID = $db->lastInsertId();
-            // Insert each time slot into the `event_tijd` table
-            $sqlEventTime = "INSERT INTO `event_tijd` 
-                             (event_id, land, plaatsnaam, straatnaam, huisnummer, postcode, datum, begin_tijd, eind_tijd) 
-                             VALUES (:eventID, :Land, :Plaats, :Straatnaam, :Huisnummer, :Postcode, :date, :BeginTijd, :EindTijd)";
- 
-            $stmtEventTime = $db->prepare($sqlEventTime);
-
-            $eventTimesArray = $event->getEventTimes();
-
-            foreach ($eventTimesArray as $slot) {
-                $stmtEventTime->bindParam(':eventID', $slot->eventId);
-                $stmtEventTime->bindParam(':Land', $slot->Land);
-                $stmtEventTime->bindParam(':Plaats', $slot->Plaats);
-                $stmtEventTime->bindParam(':Straatnaam', $slot->Straatnaam);
-                $stmtEventTime->bindParam(':Huisnummer', $slot->Huisnummer);
-                $stmtEventTime->bindParam(':Postcode', $slot->Postcode);
-
-                $stmtEventTime->bindParam(':date', $slot['date']);
-                $stmtEventTime->bindParam(':BeginTijd', $slot['BeginTime']);
-                $stmtEventTime->bindParam(':EindTijd', $slot['EndTime']);
-
-                if (!$stmtEventTime->execute()) {
-                    // Rollback if the time slot insertion fails
-                    return "The time slot insertion failed!";
-                }
-            }
-            // echo "Successfully added event and all time slots!";
-            // return "Successfully added event and all time slots!";
-
-            $sqlSector = "INSERT INTO sector_event
-                          (event_id, sector_id)
-                          VALUES (:EventID, :SectorID)";
-
-            $stmtSector = $db->prepare($sqlSector);
-
-            foreach ($event->eventSector as $key => $value) {
-                $stmtSector->bindParam(':EventID', $event->eventID);
-                $stmtSector->bindParam(':SectorID', $value);
-
-                if (!$stmtSector->execute()) {
-                    return "The sector insertion failed!";
-                }
-            }
-            var_dump($event);
-            // die;
+        if (trim($this->eventName ?? '') === '') {
+            $errors[] = 'Vul een titel in.';
         }
-        error_log("Event insertion failed: " . implode(", ", $stmtEvent->errorInfo()));
-        // echo "Insertion into `event` table failed!";
-        return "Insertion into `event` table failed!";
+
+        if (trim($this->eventInfo ?? '') === '') {
+            $errors[] = 'Vul een beschrijving in.';
+        }
+
+        if (empty($this->eventTimes)) {
+            $errors[] = 'Voeg minstens één datum met begin- en eindtijd toe.';
+        }
+
+        foreach ($this->eventTimes as $slot) {
+            if (
+                empty($slot['date'])
+                || empty($slot['BeginTime'])
+                || empty($slot['EndTime'])
+            ) {
+                $errors[] = 'Vul bij elke dag een datum, begintijd en eindtijd in.';
+                break;
+            }
+        }
+
+        $postcode = trim($this->eventPostcode);
+
+        if ($postcode !== '') {
+            switch ($this->eventLand) {
+                case 'Netherland':
+                case 'Nederland':
+                    if (!preg_match('/^\d{4}\s?[A-Z]{2}$/', $postcode)) {
+                        $errors[] = 'De postcode moet bestaan uit 4 cijfers en 2 hoofdletters.';
+                    }
+                    break;
+
+                case 'België':
+                case 'Luxemburg':
+                    if (!preg_match('/^\d{4}$/', $postcode)) {
+                        $errors[] = 'De postcode moet bestaan uit 4 cijfers.';
+                    }
+                    break;
+
+                case 'Duitsland':
+                    if (!preg_match('/^\d{5}$/', $postcode)) {
+                        $errors[] = 'De postcode moet bestaan uit 5 cijfers.';
+                    }
+                    break;
+            }
+        }
+
+        return $errors;
+    }
+
+    /** Slaat het event, de tijdsloten en de sectoren op. Geeft true bij succes. */
+    public static function sendEvent(EventModel $event): bool
+    {
+        $db = Conn::getInstance()->getPDO();
+
+        try {
+            $db->beginTransaction();
+
+            $stmtEvent = $db->prepare(
+                "INSERT INTO event (naam, beschrijving, organisator_id)
+                 VALUES (:eventName, :eventInfo, :eventOrganisator)"
+            );
+
+            if (!$stmtEvent->execute([
+                ':eventName' => $event->eventName,
+                ':eventInfo' => $event->eventInfo,
+                ':eventOrganisator' => $event->eventOrganizer,
+            ])) {
+                throw new \RuntimeException(
+                    'Insertion into `event` failed: '
+                    . implode(', ', $stmtEvent->errorInfo())
+                );
+            }
+
+            $event->eventID = (int) $db->lastInsertId();
+
+            $stmtEventTime = $db->prepare(
+                "INSERT INTO `event_tijd`
+                    (event_id, land, plaatsnaam, straatnaam, huisnummer,
+                     postcode, datum, begin_tijd, eind_tijd)
+                 VALUES
+                    (:eventID, :Land, :Plaats, :Straatnaam, :Huisnummer,
+                     :Postcode, :date, :BeginTijd, :EindTijd)"
+            );
+
+            foreach ($event->getEventTimes() as $slot) {
+                if (!$stmtEventTime->execute([
+                    ':eventID' => $event->eventID,
+                    ':Land' => $event->eventLand,
+                    ':Plaats' => $event->eventPlaats,
+                    ':Straatnaam' => $event->eventStraatnaam,
+                    ':Huisnummer' => $event->eventHuisnummer,
+                    ':Postcode' => $event->eventPostcode,
+                    ':date' => $slot['date'],
+                    ':BeginTijd' => $slot['BeginTime'],
+                    ':EindTijd' => $slot['EndTime'],
+                ])) {
+                    throw new \RuntimeException(
+                        'Insertion into `event_tijd` failed: '
+                        . implode(', ', $stmtEventTime->errorInfo())
+                    );
+                }
+            }
+
+            $stmtSector = $db->prepare(
+                "INSERT INTO sector_event (event_id, sector_id)
+                 VALUES (:EventID, :SectorID)"
+            );
+
+            foreach ($event->eventSector as $sectorId) {
+                if (!$stmtSector->execute([
+                    ':EventID' => $event->eventID,
+                    ':SectorID' => $sectorId,
+                ])) {
+                    throw new \RuntimeException(
+                        'Insertion into `sector_event` failed: '
+                        . implode(', ', $stmtSector->errorInfo())
+                    );
+                }
+            }
+
+            $db->commit();
+
+            return true;
+        } catch (\Exception $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+
+            error_log('Event opslaan mislukt: ' . $e->getMessage());
+
+            return false;
+        }
     }
 }
-

@@ -9,7 +9,6 @@ class SingleEventModel extends DBModel
 {
     public $message;
     public $gebruikerID;
-
     public $event;
     public $activities;
     public $organisations;
@@ -17,292 +16,308 @@ class SingleEventModel extends DBModel
 
     public function __construct()
     {
-
+        // De databaseverbinding wordt per query opgehaald via Conn.
     }
 
-    public function setMessage(string $message)
+    public function setMessage(string $message): void
     {
         $this->message = $message;
     }
 
-    public function setGebruikerId(int $gebruikerID){
+    public function setGebruikerId(int $gebruikerID): void
+    {
         $this->gebruikerID = $gebruikerID;
     }
 
-    public function setEvent(EventModel $event){
+    public function setEvent(EventModel $event): void
+    {
         $this->event = $event;
     }
 
-    public function setActivities(array $activities){
+    public function setActivities(array $activities): void
+    {
         $this->activities = $activities;
     }
 
-    public function setOrganisations(array $organisations){
+    public function setOrganisations(array $organisations): void
+    {
         $this->organisations = $organisations;
     }
 
-    public function setRoles(array $active_roles){
+    public function setRoles(array $active_roles): void
+    {
         $this->active_roles = $active_roles;
     }
 
-    public static function getOrganisations()
+    public static function getOrganisations(): array
     {
-        $mysql = Conn::getInstance();
-        $db = $mysql->getPDO();
-
-        $sql = "SELECT * FROM vereniging";
-
-        $stmt = $db->prepare($sql);
-
-        if (!$stmt->execute()) {
-            die('Query failed: ' . implode(' ', $stmt->errorInfo()));
-        }
+        $db = Conn::getInstance()->getPDO();
+        $stmt = $db->prepare('SELECT id, naam FROM vereniging ORDER BY naam');
+        $stmt->execute();
 
         $organisations = [];
+
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $organisation = new OrganisationModel($row['id'], $row['naam']);
-            $organisations[] = $organisation;
+            $organisations[] = new OrganisationModel(
+                (int) $row['id'],
+                $row['naam']
+            );
         }
 
         return $organisations;
     }
 
-    public static function getActivitiesByEventId(int $id)
+    /** Haalt alle activiteiten van een evenement op voor bezoekers. */
+    public static function getActivitiesByEventId(int $id): array
     {
-        $mysql = Conn::getInstance();
-        $db = $mysql->getPDO();
-        $sql = "SELECT aet.id as aet_ID,
-                       aet.event_tijd_id,
-                       aet.begin_tijd,
-                       aet.eind_tijd,
-                       a.id as Activiteit_ID,
-                       a.naam,
-                       a.locatie,
-                       NULL as Gebruiker_ID,
-                       NULL as Organisatie_ID,
-                       NULL as Rol_ID
-                       FROM `activiteit_event_tijd` aet
-                       LEFT JOIN `event_tijd` et ON aet.event_tijd_id = et.id
-                       LEFT JOIN `activiteit` a ON aet.activiteit_id = a.id
-                       WHERE et.event_id = :eventid";
+        $db = Conn::getInstance()->getPDO();
 
-        $stmt = $db->prepare($sql);
-
-        if (!$stmt->execute(['eventid' => $id])) {
-            die('Query failed: ' . implode(' ', $stmt->errorInfo()));
-        }
-
-        $activities = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $activity = new ActivityModel();
-            $activity->setActiviteitEventTijdId($row['aet_ID']);
-            $activity->setActiviteitId($row['Activiteit_ID']);
-            $activity->setEventTijdId($row['event_tijd_id']);
-            $activity->setNaam($row['naam']);
-            $activity->setBeginTijd($row['BeginTijd']);
-            $activity->setEindTijd($row['EindTijd']);
-            // $activity->setMaximumVrijwilligers($row['VrijwilligerAantal']);
-            // $activity->setMaximumBegeleiders($row['BegeleiderAantal']);
-            $activities[] = $activity;
-        }
-        return $activities;
-    }
-
-    public static function getPlanningByEventIdAndUserId(int $id, int $gebruiker_id)
-    {
-        $mysql = Conn::getInstance();
-        $db = $mysql->getPDO();
-        $sql = "SELECT aet.id as aet_ID,
-                aet.event_tijd_id as et_ID,
-                -- aet.VrijwilligerAantal,
-                -- aet.BegeleiderAantal,
-                p.begin_tijd,
-                p.eind_tijd,
-                a.id as Activiteit_ID,
-                a.Naam,
-                p.id as Planning_ID,
-                p.gebruiker_id,
-                p.vereniging_id,
-                p.rol_id as Rol_ID
+        $sql = "SELECT
+                    aet.id AS aet_id,
+                    aet.event_tijd_id,
+                    aet.begin_tijd,
+                    aet.eind_tijd,
+                    a.id AS activiteit_id,
+                    a.naam,
+                    et.plaatsnaam AS locatie
                 FROM activiteit_event_tijd aet
-                LEFT JOIN event_tijd et ON aet.event_tijd_id = et.id
-                LEFT JOIN activiteit a ON aet.activiteit_ID = a.id
-                RIGHT JOIN planning p ON aet.activiteit_event_tijd_id = p.activiteit_event_tijd_id 
-                WHERE et.event_id = :eventid AND p.gebruiker_id = :userid";
-
-        $stmt = $db->prepare($sql);
-
-        if (!$stmt->execute(['eventid' => $id, 'userid' => $gebruiker_id])) {
-            die('Query failed: ' . implode(' ', $stmt->errorInfo()));
-        }
-
-        $activities = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $activity = new ActivityModel();
-            $activity->setActiviteitEventTijdId($row['aet_id']);
-            $activity->setActiviteitId($row['Activiteit_ID']);
-            $activity->setEventTijdId($row['et_id']);
-            $activity->setNaam($row['naam']);
-            $activity->setBeginTijd($row['begin_tijd']);
-            $activity->setEindTijd($row['EindTijd']);
-            // $activity->setMaximumVrijwilligers($row['VrijwilligerAantal']);
-            // $activity->setMaximumBegeleiders($row['BegeleiderAantal']);
-            $activity->setGebruikerID($row['gebruiker_id']);
-            $activity->setOrganisationID($row['vereniging_id']);
-            $activity->setRolID($row['Rol_ID']);
-            $activity->setPlannedID($row['Planning_ID']);
-            $activities[] = $activity;
-        }
-        return $activities;
-    }
-
-    public static function getActivitiesByEventIdAndUserId(int $id, int $gebruiker_id)
-    {
-        $mysql = Conn::getInstance();
-        $db = $mysql->getPDO();
-
-        $sql = "SELECT aet.id AS aet_id,
-                       aet.event_tijd_id AS aet_et_id,
-                       p.id AS planning_id,
-                       aet.begin_tijd,
-                       aet.eind_tijd,
-                       a.id AS activiteit_id,
-                       a.naam,
-                       p.gebruiker_id,
-                       p.vereniging_id,
-                       p.rol_id
-                FROM activiteit_event_tijd as aet
-                JOIN event_tijd AS et ON aet.event_tijd_id = et.id
-                JOIN activiteit AS a ON aet.activiteit_id = a.id
-                LEFT JOIN planning as p ON p.activiteit_event_tijd_id = aet.id AND p.gebruiker_id = :userid
+                INNER JOIN event_tijd et
+                    ON et.id = aet.event_tijd_id
+                INNER JOIN activiteit a
+                    ON a.id = aet.activiteit_id
                 WHERE et.event_id = :eventid
-        ";
-
-        $sql = "SELECT t.aet_ID, t.event_tijd_id, t.id, t.begin_tijd, t.eind_tijd, t.activiteit_id, t.naam, t.gebruiker_id, t.vereniging_id, t.rol_id
-                FROM (SELECT    aet.id as aet_ID,
-                                aet.event_tijd_id,
-                                p.id as Planning_ID,
-                                p.begin_tijd,
-                                p.eind_tijd,
-                                -- aet.VrijwilligerAantal,
-                                -- aet.BegeleiderAantal,
-                                a.id as Activiteit_ID,
-                                a.naam,
-                                p.gebruiker_id,
-                                p.vereniging_id,
-                                p.rol_id
-                                FROM activiteit_event_tijd aet
-                                LEFT JOIN event_tijd et ON aet.event_tijd_id = et.id
-                                LEFT JOIN activiteit a ON aet.activiteit_id = a.id
-                                RIGHT JOIN planning p ON aet.activiteit_event_tijd_id  = p.activiteit_event_tijd_id
-                                WHERE et.event_id = :eventid AND p.gebruiker_id = :userid
-
-                    UNION
-
-                    SELECT aet.activiteit_event_tijd_id,
-                                    aet.event_tijd_id,
-                                    null as ID,
-                                    aet.begin_tijd,
-                                    aet.eind_tijd,
-                                    -- aet.VrijwilligerAantal,
-                                    -- aet.BegeleiderAantal,
-                                    a.id as Activiteit_ID,
-                                    a.naam,
-                                    NULL as Gebruiker_ID,
-                                    NULL as Organisatie_ID,
-                                    NULL as Rol_ID
-                                    FROM `activiteit_event_tijd` aet
-                                    LEFT JOIN `event-tijd` et ON aet.event_tijd_id = et.id
-                                    LEFT JOIN `activiteit` a ON aet.activiteit_id = a.id
-                                    WHERE et.event_id = :eventid
-
-                    ) as t
-                 GROUP BY t.activiteit_event_tijd_id, t.event_tijd_id, t.id, t.begin_tijd, t.eind_tijd, t.activiteit_id, t.naam, t.gebruiker_id, t.organisatie_id, t.rol_id";
+                ORDER BY aet.begin_tijd ASC";
 
         $stmt = $db->prepare($sql);
-
-        if (!$stmt->execute(['eventid' => $id, 'userid' => $gebruiker_id])) {
-            die('Query failed: ' . implode(' ', $stmt->errorInfo()));
-        }
+        $stmt->execute(['eventid' => $id]);
 
         $activities = [];
-        $plannedActivities = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $activity = new ActivityModel();
-            $activity->setActiviteitEventTijdId($row['activiteit_event_tijd_ID']);
-            $activity->setActiviteitId($row['ActiviteitID']);
-            $activity->setEventTijdId($row['event_tijd_ID']);
-            $activity->setNaam($row['Naam']);
-            $activity->setBeginTijd($row['BeginTijd']);
-            $activity->setEindTijd($row['EindTijd']);
-            $activity->setMaximumVrijwilligers($row['VrijwilligerAantal']);
-            $activity->setMaximumBegeleiders($row['BegeleiderAantal']);
-            $activity->setGebruikerID($row['Gebruiker_ID']);
-            $activity->setOrganisationID($row['Organisatie_ID']);
-            $activity->setRolID($row['Rol_ID']);
-            $activity->setPlannedID($row['ID']);
-            if ($activity->getPlannedID() !== null) {
-                $plannedActivities[] = $activity;
-            }
-            $activities[] = $activity;
-        }
 
-        foreach ($plannedActivities as $pActivity) {
-            foreach ($activities as $key => $activity) {
-                if ($activity->getPlannedID() == null && $activity->getActivityID() === $pActivity->getActivityID()
-                    && $activity->getID() === $pActivity->getID()
-                    && $activity->getEventTijdID() === $pActivity->getEventTijdID()) {
-                    unset($activities[$key]);
-                }
-            }
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $activity = new ActivityModel(
+                (string) $row['naam'],
+                (string) $row['begin_tijd'],
+                (string) $row['eind_tijd']
+            );
+
+            $activity->setActiviteitEventTijdId((int) $row['aet_id']);
+            $activity->setActiviteitId((int) $row['activiteit_id']);
+            $activity->setEventTijdId((int) $row['event_tijd_id']);
+            $activity->setLocatie((string) ($row['locatie'] ?? ''));
+            $activity->setGebruikerID(null);
+            $activity->setOrganisationID(null);
+            $activity->setRolID(null);
+            $activity->setPlannedID(null);
+
+            $activities[] = $activity;
         }
 
         return $activities;
     }
 
-    public static function getEventById(int $id) {
-        $mysql = Conn::getInstance();
-        $db = $mysql->getPDO();
-    
-        $sql = "SELECT event.ID, event.Eventnaam AS eventName, 
-                    event.Info AS eventInfo, 
-                    `event-tijd`.Datum AS eventDate,
-                    event.HoofdEvent AS hoofdEventID,
-                    event.Organisator AS organisator,
-                    `event-tijd`.Land AS Land,
-                    `event-tijd`.Plaats AS Plaats,
-                    `event-tijd`.Huisnummer AS Huisnummer,
-                    `event-tijd`.Postcode AS Postcode,
-                    `event-tijd`.Straatnaam AS Straatnaam,
-                    `event-tijd`.Sector AS Sector,
-                    event.Banner AS Banner
-                FROM event 
-                LEFT OUTER JOIN `event-tijd` ON event.ID=`event-tijd`.Event_ID
-                ";
-        $stmt = $db->prepare($sql);
+    /** Haalt de activiteiten op waarop deze gebruiker al is ingepland. */
+    public static function getPlanningByEventIdAndUserId(
+        int $id,
+        int $gebruiker_id
+    ): array {
+        $db = Conn::getInstance()->getPDO();
 
-        if (!$stmt->execute()) {
-            die('Query failed: ' . implode(' ', $stmt->errorInfo()));
-        }
-    
-        $events = [];
+        $sql = "SELECT
+                    aet.id AS aet_id,
+                    aet.event_tijd_id,
+                    aet.begin_tijd AS activiteit_begin_tijd,
+                    aet.eind_tijd AS activiteit_eind_tijd,
+                    a.id AS activiteit_id,
+                    a.naam,
+                    et.plaatsnaam AS locatie,
+                    p.id AS planning_id,
+                    p.gebruiker_id,
+                    p.vereniging_id,
+                    COALESCE(p.begin_tijd, aet.begin_tijd) AS planning_begin_tijd,
+                    COALESCE(p.eind_tijd, aet.eind_tijd) AS planning_eind_tijd
+                FROM planning p
+                INNER JOIN activiteit_event_tijd aet
+                    ON aet.id = p.activiteit_event_tijd_id
+                INNER JOIN event_tijd et
+                    ON et.id = aet.event_tijd_id
+                INNER JOIN activiteit a
+                    ON a.id = aet.activiteit_id
+                WHERE et.event_id = :eventid
+                  AND p.gebruiker_id = :userid
+                ORDER BY aet.begin_tijd ASC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            'eventid' => $id,
+            'userid' => $gebruiker_id
+        ]);
+
+        $activities = [];
+
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $event = new EventModel(
-                (int)$row['organisator'],
-                $row['eventName'],
-                $row['eventInfo'],
-                $row['Land'] ?? 'Unknown',
-                $row['Plaats'] ?? 'Unknown',
-                $row['Straatnaam'] ?? 'Unknown',
-                $row['Huisnummer'] ?? 'Unknown',
-                $row['Postcode'] ?? 'Unknown',
-                $row['Sector'] ?? 'Unknown',
-                [['date' => $row['eventDate'], 'startTime' => null, 'endTime' => null]], 
-                $row['Banner'] ?? ''
+            $activity = new ActivityModel(
+                (string) $row['naam'],
+                (string) $row['planning_begin_tijd'],
+                (string) $row['planning_eind_tijd']
             );
-            $event->eventID = $row['ID'];
-            $event->hoofdEventID = $row['hoofdEventID'];
-            return $event;
+
+            $activity->setActiviteitEventTijdId((int) $row['aet_id']);
+            $activity->setActiviteitId((int) $row['activiteit_id']);
+            $activity->setEventTijdId((int) $row['event_tijd_id']);
+            $activity->setLocatie((string) ($row['locatie'] ?? ''));
+            $activity->setGebruikerID((int) $row['gebruiker_id']);
+            $activity->setOrganisationID(
+                $row['vereniging_id'] !== null
+                    ? (int) $row['vereniging_id']
+                    : null
+            );
+            $activity->setRolID(null);
+            $activity->setPlannedID((int) $row['planning_id']);
+
+            $activities[] = $activity;
         }
+
+        return $activities;
+    }
+
+    /** Toont alle activiteiten en markeert welke al door de gebruiker zijn gekozen. */
+    public static function getActivitiesByEventIdAndUserId(
+        int $id,
+        int $gebruiker_id
+    ): array {
+        $db = Conn::getInstance()->getPDO();
+
+        $sql = "SELECT
+                    aet.id AS aet_id,
+                    aet.event_tijd_id,
+                    aet.begin_tijd AS activiteit_begin_tijd,
+                    aet.eind_tijd AS activiteit_eind_tijd,
+                    a.id AS activiteit_id,
+                    a.naam,
+                    et.plaatsnaam AS locatie,
+                    p.id AS planning_id,
+                    p.gebruiker_id,
+                    p.vereniging_id,
+                    COALESCE(p.begin_tijd, aet.begin_tijd) AS planning_begin_tijd,
+                    COALESCE(p.eind_tijd, aet.eind_tijd) AS planning_eind_tijd
+                FROM activiteit_event_tijd aet
+                INNER JOIN event_tijd et
+                    ON et.id = aet.event_tijd_id
+                INNER JOIN activiteit a
+                    ON a.id = aet.activiteit_id
+                LEFT JOIN planning p
+                    ON p.activiteit_event_tijd_id = aet.id
+                   AND p.gebruiker_id = :userid
+                WHERE et.event_id = :eventid
+                ORDER BY aet.begin_tijd ASC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            'eventid' => $id,
+            'userid' => $gebruiker_id
+        ]);
+
+        $activities = [];
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $activity = new ActivityModel(
+                (string) $row['naam'],
+                (string) $row['planning_begin_tijd'],
+                (string) $row['planning_eind_tijd']
+            );
+
+            $activity->minTijd = (string) $row['activiteit_begin_tijd'];
+            $activity->maxTijd = (string) $row['activiteit_eind_tijd'];
+
+            $activity->setActiviteitEventTijdId((int) $row['aet_id']);
+            $activity->setActiviteitId((int) $row['activiteit_id']);
+            $activity->setEventTijdId((int) $row['event_tijd_id']);
+            $activity->setLocatie((string) ($row['locatie'] ?? ''));
+
+            $activity->setGebruikerID(
+                $row['gebruiker_id'] !== null
+                    ? (int) $row['gebruiker_id']
+                    : null
+            );
+
+            $activity->setOrganisationID(
+                $row['vereniging_id'] !== null
+                    ? (int) $row['vereniging_id']
+                    : null
+            );
+
+            $activity->setRolID(null);
+
+            $activity->setPlannedID(
+                $row['planning_id'] !== null
+                    ? (int) $row['planning_id']
+                    : null
+            );
+
+            $activities[] = $activity;
+        }
+
+        return $activities;
+    }
+
+    /** Haalt één evenement op met de bijbehorende eerste datum/tijd. */
+    public static function getEventById(int $id): ?EventModel
+    {
+        $db = Conn::getInstance()->getPDO();
+
+        $sql = "SELECT
+                    e.id,
+                    e.naam,
+                    e.beschrijving,
+                    e.hoofd_event,
+                    e.organisator_id,
+                    et.datum,
+                    et.begin_tijd,
+                    et.eind_tijd,
+                    et.land,
+                    et.plaatsnaam,
+                    et.straatnaam,
+                    et.huisnummer,
+                    et.postcode
+                FROM `event` e
+                LEFT JOIN event_tijd et
+                    ON et.event_id = e.id
+                WHERE e.id = :eventid
+                  AND e.removed = 0
+                ORDER BY et.datum ASC, et.begin_tijd ASC
+                LIMIT 1";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute(['eventid' => $id]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return null;
+        }
+
+        $event = new EventModel();
+
+        $event->setEventID((string) $row['id']);
+        $event->setEventName((string) $row['naam']);
+        $event->setEventInfo((string) ($row['beschrijving'] ?? ''));
+        $event->setEventOrganizer((int) ($row['organisator_id'] ?? 0));
+        $event->setEventSector(null);
+
+        $event->setEventTimes(
+            $row['datum'] !== null
+                ? [[
+                    'date' => $row['datum'],
+                    'startTime' => $row['begin_tijd'],
+                    'endTime' => $row['eind_tijd']
+                ]]
+                : []
+        );
+
+        $event->hoofdEventID = $row['hoofd_event'] !== null
+            ? (int) $row['hoofd_event']
+            : null;
+
+        return $event;
     }
 }

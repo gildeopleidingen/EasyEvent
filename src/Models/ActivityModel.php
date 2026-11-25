@@ -20,6 +20,8 @@ class ActivityModel extends DBModel
     public string $naam;
     public string $beginTijd;
     public string $eindTijd;
+    public ?string $minTijd = null;
+    public ?string $maxTijd = null;
 
     public function __construct($naam, $beginTijd, $eindTijd, $aantalPersonen = 0)
     {

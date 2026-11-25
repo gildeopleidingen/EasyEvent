@@ -59,6 +59,14 @@ $databaseUnavailable = $databaseUnavailable ?? false;
 
         </div>
 
+        <?php if (isset($_GET['ingeschreven'])): ?>
+
+            <div class="alert alert-success" role="alert">
+                Je bent ingeschreven! Je activiteiten zie je hieronder met een groen label.
+            </div>
+
+        <?php endif; ?>
+
         <?php if ($databaseUnavailable): ?>
 
             <div class="alert alert-warning" role="alert">
@@ -94,6 +102,7 @@ $databaseUnavailable = $databaseUnavailable ?? false;
 
                     $activityDate = strtotime($activity['event_date']);
                     $registeredVolunteers = (int) $activity['registered_volunteers'];
+                    $isRegistered = !empty($activity['is_registered']);
 
                 ?>
 
@@ -121,6 +130,13 @@ $databaseUnavailable = $databaseUnavailable ?? false;
                             <h3>
                                 <?= htmlspecialchars($activity['activity_name']) ?>
                             </h3>
+
+                            <?php if ($isRegistered): ?>
+                                <span class="badge bg-success mb-2">
+                                    <i class="bi bi-check-circle" aria-hidden="true"></i>
+                                    Je bent ingeschreven
+                                </span>
+                            <?php endif; ?>
 
                             <ul class="volunteer-details">
 
@@ -158,7 +174,7 @@ $databaseUnavailable = $databaseUnavailable ?? false;
                                 class="btn btn-primary volunteer-action"
                                 href="/event-info?eventID=<?= (int) $activity['event_id'] ?>"
                             >
-                                Bekijk &amp; meld je aan
+                                <?= $isRegistered ? 'Bekijk je inschrijving' : 'Bekijk &amp; meld je aan' ?>
                             </a>
 
                         <?php else: ?>
