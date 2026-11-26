@@ -62,18 +62,34 @@ use App\Models\InschrijfModel;
                      placeholder="Search events..."
                      >
             
+            <?php
+            // generateEvents() geeft één regel per dag; toon ieder event maar één keer
+            // en onthoud al zijn datums (voor de kalender en het datumfilter).
+            $uniekeEvents = [];
+            $eventDatums = [];
+            foreach ($events ?? [] as $event) {
+                $id = $event->getEventID();
+                if (!isset($uniekeEvents[$id])) {
+                    $uniekeEvents[$id] = $event;
+                    $eventDatums[$id] = [];
+                }
+                $datum = substr($event->getEventTimes()[0]['date'] ?? '', 0, 10);
+                if ($datum !== '' && !in_array($datum, $eventDatums[$id], true)) {
+                    $eventDatums[$id][] = $datum;
+                }
+            }
+            $events = array_values($uniekeEvents);
+            ?>
+
             <?php if (!empty($events)): ?>
                 <div class="accordion" id="eventsAccordion">
                     <?php
                     foreach ($events as $index => $event):?>
-                        <?php $eventTimes = $event->getEventTimes(); ?>
+                        <?php $datums = $eventDatums[$event->getEventID()]; sort($datums); ?>
                         <div class="accordion-item ev-item"
                              data-sector-ids="<?= htmlspecialchars($event->getEventSectorAsString()) ?>"
-                             data-event-date="<?= htmlspecialchars(
-                                 substr($eventTimes[0]['date'] ?? '', 0, 10),
-                                 ENT_QUOTES,
-                                 'UTF-8'
-                             ) ?>">
+                             data-event-date="<?= htmlspecialchars($datums[0] ?? '') ?>"
+                             data-event-dates="<?= htmlspecialchars(implode(' ', $datums)) ?>">
                             <h2 class="accordion-header" id="heading<?= $index ?>">
                                 <button class="accordion-button collapsed"
                                         type="button"

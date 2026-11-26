@@ -33,7 +33,8 @@ function loadCalendar(date) {
         const isToday = today.toDateString() === date.toDateString();
         const dateKey = `${year}-${String(month + 1).padStart(2, "0")}`
             + `-${String(day).padStart(2, "0")}`;
-        const hasEvents = document.querySelector(`.ev-item[data-event-date="${dateKey}"]`);
+        // Een event kan meerdere dagen hebben (spatie-gescheiden in data-event-dates).
+        const hasEvents = document.querySelector(`.ev-item[data-event-dates~="${dateKey}"]`);
         const isSelected = window.selectedEventDate === dateKey;
         const classes = ["text-white", "calendar-day"];
 
