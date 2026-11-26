@@ -101,9 +101,13 @@
             .split(",")
             .map((sector) => sector.trim());
           const matchesSector = selectedSector === "all" || sectors.includes(selectedSector);
+          // Een event kan meerdere dagen hebben (data-event-dates, spatie-gescheiden).
+          const eventDates = (item.dataset.eventDates || item.dataset.eventDate || "")
+            .split(" ")
+            .filter(Boolean);
           const matchesDate = window.selectedEventDate
-            ? item.dataset.eventDate === window.selectedEventDate
-            : item.dataset.eventDate >= todayKey;
+            ? eventDates.includes(window.selectedEventDate)
+            : eventDates.some((date) => date >= todayKey);
           const matchesSearch = q === "" || title.includes(q) || desc.includes(q);
           const match = matchesSector && matchesDate && matchesSearch;
 
